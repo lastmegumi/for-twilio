@@ -1,20 +1,27 @@
 <?php
-require_once(ROOT_PATH . 'include/twilio/autoload.php');
+#autoload is required
+require_once(ROOT_PATH . 'path_to_autoload/autoload.php');
 use Twilio\Rest\Client;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-class sms_sys{
-	private $Token 	= "314679426ef4f593344c2522ad843c74";
-	private $sid 	= "AC55bc3f3fdf99d6b96046ae29d99cec8e";
-	private $from = "+15168304418";
+class twilio{
+	private $Token 	= "your_token";
+	private $sid 	= "your_skid";
+	private $from = "your_number";
+	public $response = array("message" 	=> "",
+						 "status"	=>	0,
+						 "data"		=> null,
+						);
 
 	function PDF($content, $filename = null){
+		#create pdf
 		error_reporting(0); 
 		set_time_limit(0);
 		ini_set('memory_limit', '8096M');
 		$content =  $content;
 
+		#	dompdf is required
 		require_once ROOT_PATH . '/include/dompdf/autoload.inc.php';
 
 		$options = new Options();
@@ -39,22 +46,24 @@ class sms_sys{
 	}
 
 	function Voice($phone = null){
-		#$phone = "+19292453662";
-
 		$client = new Client($this->sid, $this->Token);
-		$client->account->calls->create(  
-		    $phone,
-		    $this->from,
-		    array(
-		        "url" => "http://ab.vanguardoffroad.com/voice.xml"
-		    )
-	    );
+		try{
+			$client->account->calls->create(  
+			    $phone,
+			    $this->from,
+			    array(
+			        "url" => "voice.xml",
+			    )
+		    );
+		}catch(Exception $e){
+			$this->response['message']	=	$e->getMessage();
+		}
+		return $this->response;
 	}
 
 
 	function Fax($phone = null, $media = null){
 		if(empty($media)){return;}
-
 		#$media = $this->PDF($content);
 		$phone = $this->is_phone_check($phone);
 		if(!$phone){return;}
@@ -102,19 +111,21 @@ class sms_sys{
        	$sms['uri']			=	$m->uri;
        	$sms['note']	= $note?$note:"";
 
-
        	if($return){
 	       	if(is_null($sms['errorCode'])){
-	       		$msg['code'] = 1;
-				$msg['message'] = '发送成功';
+	       		$this->response['status'] = 1;
+				$this->response['message'] = "Successful";
 	       	}else{
-				$msg['code'] = $sms['errorCode'];
-				$msg['message'] = $sms['errorMessage'];
+	       		$this->response['errorCode']	=	$sms["errorCode"];
+				$this->response['message'] = $sms['errorMessage'];
 	       	}
-	    $this->redirect("index");
        }
+       return $this->response;
 	}
 
+
+	// US phone number check
+	// return first matched phone nubmer from string;
 	private function is_phone_check($phone = null){
 	   $reg = '/^\S?(?:1(?:\D)?)?(?:\((?=\d{3}\)))?(?P<p1>[0-9]\d{2})(?:(?<=\(\d{3})\))?(\D{1,2})?(?:(?<=\d{2})\D)?(?P<p2>[0-9]\d{2})\D?(?P<p3>\d{4})/';
 	   $is_match = preg_match($reg, $phone, $matches);
